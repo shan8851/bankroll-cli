@@ -1,4 +1,9 @@
 use std::io;
+mod cash;
+use cash::*;
+mod tournaments;
+use tournaments::get_tournament_stake;
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum GameType {
@@ -13,114 +18,6 @@ enum RiskLevel {
     Moderate,
     Aggressive,
     UltraAggressive,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum CashStake {
-    NL2,
-    NL5,
-    NL10,
-    NL25,
-    NL50,
-    NL100,
-    NL200,
-    NL500,
-    NL1000,
-    NL2000,
-    NL5000,
-    NL10000,
-}
-
-impl CashStake {
-    fn buyin_amount(&self) -> f64 {
-        match self {
-            CashStake::NL2 => 2.0,
-            CashStake::NL5 => 5.0,
-            CashStake::NL10 => 10.0,
-            CashStake::NL25 => 25.0,
-            CashStake::NL50 => 50.0,
-            CashStake::NL100 => 100.0,
-            CashStake::NL200 => 200.0,
-            CashStake::NL500 => 500.0,
-            CashStake::NL1000 => 1000.0,
-            CashStake::NL2000 => 2000.0,
-            CashStake::NL5000 => 5000.0,
-            CashStake::NL10000 => 10000.0,
-        }
-    }
-}
-
-fn get_cash_stake(bankroll: f64, risk: RiskLevel) -> CashStake {
-    let min_buyins = match risk {
-        RiskLevel::Conservative => 50.0,
-        RiskLevel::Moderate => 40.0,
-        RiskLevel::Aggressive => 30.0,
-        RiskLevel::UltraAggressive => 20.0,
-    };
-
-    let stakes = [
-        CashStake::NL10000,
-        CashStake::NL5000,
-        CashStake::NL2000,
-        CashStake::NL1000,
-        CashStake::NL500,
-        CashStake::NL200,
-        CashStake::NL100,
-        CashStake::NL50,
-        CashStake::NL25,
-        CashStake::NL10,
-        CashStake::NL5,
-        CashStake::NL2,
-    ];
-
-    for stake in stakes {
-        if bankroll >= stake.buyin_amount() * min_buyins {
-            return stake;
-        }
-    }
-
-    CashStake::NL2 // fallback
-}
-
-fn get_cash_stake_with_neighbors(
-    bankroll: f64,
-    risk: RiskLevel,
-) -> (CashStake, Option<CashStake>, Option<CashStake>) {
-    let min_buyins = match risk {
-        RiskLevel::Conservative => 50.0,
-        RiskLevel::Moderate => 40.0,
-        RiskLevel::Aggressive => 30.0,
-        RiskLevel::UltraAggressive => 20.0,
-    };
-
-    let stakes = [
-        CashStake::NL10000,
-        CashStake::NL5000,
-        CashStake::NL2000,
-        CashStake::NL1000,
-        CashStake::NL500,
-        CashStake::NL200,
-        CashStake::NL100,
-        CashStake::NL50,
-        CashStake::NL25,
-        CashStake::NL10,
-        CashStake::NL5,
-        CashStake::NL2,
-    ];
-
-    for (i, stake) in stakes.iter().enumerate() {
-        if bankroll >= stake.buyin_amount() * min_buyins {
-            let lower_stake = if i < stakes.len() - 1 {
-                Some(stakes[i + 1])
-            } else {
-                None
-            };
-            let upper_stake = if i > 0 { Some(stakes[i - 1]) } else { None };
-            return (*stake, lower_stake, upper_stake);
-        }
-    }
-
-    (CashStake::NL2, None, None)
 }
 
 fn main() {
@@ -207,7 +104,9 @@ fn main() {
 
     println!("Player Profile: {:?}", player_profile);
 
-    if let GameType::Cash = player_profile.game_type {
+
+    match player_profile.game_type {
+    GameType::Cash => {
         let (current, move_down, move_up) =
             get_cash_stake_with_neighbors(player_profile.bankroll, player_profile.risk_level);
 
@@ -217,13 +116,7 @@ fn main() {
             println!(
                 "🟢 Move up to {:?} at: ${:.2}",
                 up,
-                up.buyin_amount()
-                    * match player_profile.risk_level {
-                        RiskLevel::Conservative => 50.0,
-                        RiskLevel::Moderate => 40.0,
-                        RiskLevel::Aggressive => 30.0,
-                        RiskLevel::UltraAggressive => 20.0,
-                    }
+                up.buyin_amount() * min_buyins(player_profile.risk_level)
             );
         }
 
@@ -231,14 +124,31 @@ fn main() {
             println!(
                 "🔻 Move down to {:?} if below: ${:.2}",
                 down,
-                down.buyin_amount()
-                    * match player_profile.risk_level {
-                        RiskLevel::Conservative => 50.0,
-                        RiskLevel::Moderate => 40.0,
-                        RiskLevel::Aggressive => 30.0,
-                        RiskLevel::UltraAggressive => 20.0,
-                    }
+                down.buyin_amount() * min_buyins(player_profile.risk_level)
             );
         }
     }
+
+    GameType::SitAndGo | GameType::Tournament => {
+        let stake = get_tournament_stake(
+            player_profile.bankroll,
+            player_profile.game_type,
+            player_profile.risk_level,
+        );
+
+        match player_profile.game_type {
+            GameType::SitAndGo => {
+                println!("🎯 You should target SNGs with a buy-in around: ${:.2}", stake);
+            }
+            GameType::Tournament => {
+                println!(
+                    "🎯 Your average tournament buy-in should be around: ${:.2}",
+                    stake
+                );
+            }
+            _ => {}
+        }
+    }
+}
+
 }
