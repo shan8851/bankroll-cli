@@ -1,6 +1,6 @@
 # 💰 Bankroll CLI 💸
 
-A sleek, interactive Rust CLI tool to help poker players manage their bankroll using solid **bankroll management (BRM)** principles. Whether you play **cash games**, **sit & gos**, or **tournaments**, this tool gives you smart, risk-adjusted stake recommendations.
+A interactive Rust CLI tool to help poker players manage their bankroll using solid **bankroll management (BRM)** principles. Whether you play **cash games**, **sit & gos**, or **tournaments**, this tool gives you smart, risk-adjusted stake recommendations.
 
 ---
 
