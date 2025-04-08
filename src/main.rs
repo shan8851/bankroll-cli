@@ -1,37 +1,62 @@
 use std::io;
+
 mod cash;
 use cash::*;
+
 mod tournaments;
 use tournaments::get_tournament_stake;
 
+mod types;
+use crate::types::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum GameType {
-    Cash,
-    Tournament,
-    SitAndGo,
+use colored::*;
+use figlet_rs::FIGfont;
+use inquire::Select;
+use terminal_size::{Width, terminal_size};
+
+// Styled banner
+fn print_banner() {
+    let font = FIGfont::standard().unwrap();
+    let figure = font.convert("💰 Bankroll CLI 💸").unwrap().to_string();
+    let width = terminal_size().map(|(Width(w), _)| w).unwrap_or(80);
+
+    for (i, line) in figure.lines().enumerate() {
+        let padding = (width.saturating_sub(line.len() as u16) / 2) as usize;
+        let styled = match i % 2 {
+            0 => line.truecolor(255, 215, 0).bold(), // gold
+            _ => line.truecolor(0, 255, 150).bold(), // emerald
+        };
+        println!("{}{}", " ".repeat(padding), styled);
+    }
+
+    println!("{}", "═".repeat(width as usize).dimmed());
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum RiskLevel {
-    Conservative,
-    Moderate,
-    Aggressive,
-    UltraAggressive,
+// Risk level → colored label
+fn format_risk_level(risk: RiskLevel) -> ColoredString {
+    match risk {
+        RiskLevel::Conservative => "Conservative".green().bold(),
+        RiskLevel::Moderate => "Moderate".yellow().bold(),
+        RiskLevel::Aggressive => "Aggressive".red().bold(),
+        RiskLevel::UltraAggressive => "UltraAggressive".bright_magenta().bold(),
+    }
+}
+
+// Game type → colored label
+fn format_game_type(game: GameType) -> ColoredString {
+    match game {
+        GameType::Cash => "Cash Games".cyan().bold(),
+        GameType::SitAndGo => "Sit & Go".bright_blue().bold(),
+        GameType::Tournament => "MTT".bright_magenta().bold(),
+    }
 }
 
 fn main() {
-    #[derive(Debug)]
-    struct PlayerProfile {
-        bankroll: f64,
-        game_type: GameType,
-        risk_level: RiskLevel,
-    }
+    print_banner();
 
-    println!("What is your current bankroll.");
+    println!("{}", "💵 Enter your current bankroll:".bold());
 
     let mut bank = String::new();
-
     io::stdin()
         .read_line(&mut bank)
         .expect("Failed to read line");
@@ -39,62 +64,55 @@ fn main() {
     let bankroll_amount: f64 = match bank.trim().parse() {
         Ok(num) => num,
         Err(_) => {
-            println!("Please enter only a number.");
+            println!("{}", "❌ Please enter a valid number.".red().bold());
             return;
         }
     };
-
-    println!("You entered: {}", bankroll_amount);
 
     println!(
-        "What type of game do you play?\n\
-1. Cash\n\
-2. Tournament\n\
-3. SitAndGo"
+        "{} {}\n",
+        "✅ Bankroll:".bold(),
+        format!("${:.2}", bankroll_amount).truecolor(255, 215, 0)
     );
 
-    let mut game_type_input = String::new();
+    // Game type prompt
+    let game_str = Select::new(
+        "🎮 What type of game do you play?",
+        vec!["Cash", "Tournament", "SitAndGo"],
+    )
+    .prompt();
 
-    io::stdin()
-        .read_line(&mut game_type_input)
-        .expect("Failed to read line");
-
-    let game_type: GameType = match game_type_input.trim() {
-        "1" => GameType::Cash,
-        "2" => GameType::Tournament,
-        "3" => GameType::SitAndGo,
+    let game_type = match game_str {
+        Ok("Cash") => GameType::Cash,
+        Ok("Tournament") => GameType::Tournament,
+        Ok("SitAndGo") => GameType::SitAndGo,
         _ => {
-            println!("Invalid input. Please enter 1, 2, or 3.");
+            println!("{}", "❌ Input cancelled.".red());
             return;
         }
     };
-    println!("You entered: {:?}", game_type);
 
-    println!(
-        "What is your risk level?\n\
-1. Conservative\n\
-2. Moderate\n\
-3. Aggressive\n\
-4. UltraAggressive"
-    );
+    println!("🎯 Game Type: {}\n", format_game_type(game_type));
 
-    let mut risk_level_input = String::new();
+    // Risk level prompt
+    let risk_str = Select::new(
+        "🚦 What is your risk level?",
+        vec!["Conservative", "Moderate", "Aggressive", "UltraAggressive"],
+    )
+    .prompt();
 
-    io::stdin()
-        .read_line(&mut risk_level_input)
-        .expect("Failed to read line");
-
-    let risk_level: RiskLevel = match risk_level_input.trim() {
-        "1" => RiskLevel::Conservative,
-        "2" => RiskLevel::Moderate,
-        "3" => RiskLevel::Aggressive,
-        "4" => RiskLevel::UltraAggressive,
+    let risk_level = match risk_str {
+        Ok("Conservative") => RiskLevel::Conservative,
+        Ok("Moderate") => RiskLevel::Moderate,
+        Ok("Aggressive") => RiskLevel::Aggressive,
+        Ok("UltraAggressive") => RiskLevel::UltraAggressive,
         _ => {
-            println!("Invalid input. Please enter 1, 2, 3, or 4.");
+            println!("{}", "❌ Input cancelled.".red());
             return;
         }
     };
-    println!("You entered: {:?}", risk_level);
+
+    println!("📈 Risk Level: {}\n", format_risk_level(risk_level));
 
     let player_profile = PlayerProfile {
         bankroll: bankroll_amount,
@@ -102,53 +120,70 @@ fn main() {
         risk_level,
     };
 
-    println!("Player Profile: {:?}", player_profile);
-
+    println!("{}", "🧠 Calculating your optimal stake...".italic());
 
     match player_profile.game_type {
-    GameType::Cash => {
-        let (current, move_down, move_up) =
-            get_cash_stake_with_neighbors(player_profile.bankroll, player_profile.risk_level);
+        GameType::Cash => {
+            let (current, move_down, move_up) =
+                get_cash_stake_with_neighbors(player_profile.bankroll, player_profile.risk_level);
 
-        println!("🎯 Recommended Stake: {:?}", current);
-
-        if let Some(up) = move_up {
             println!(
-                "🟢 Move up to {:?} at: ${:.2}",
-                up,
-                up.buyin_amount() * min_buyins(player_profile.risk_level)
+                "\n🎯 Recommended Stake: {}",
+                format!("{:?}", current).truecolor(0, 255, 120).bold()
             );
-        }
 
-        if let Some(down) = move_down {
-            println!(
-                "🔻 Move down to {:?} if below: ${:.2}",
-                down,
-                down.buyin_amount() * min_buyins(player_profile.risk_level)
-            );
-        }
-    }
-
-    GameType::SitAndGo | GameType::Tournament => {
-        let stake = get_tournament_stake(
-            player_profile.bankroll,
-            player_profile.game_type,
-            player_profile.risk_level,
-        );
-
-        match player_profile.game_type {
-            GameType::SitAndGo => {
-                println!("🎯 You should target SNGs with a buy-in around: ${:.2}", stake);
-            }
-            GameType::Tournament => {
+            if let Some(up) = move_up {
                 println!(
-                    "🎯 Your average tournament buy-in should be around: ${:.2}",
-                    stake
+                    "🟢 Move up to {} at: {}",
+                    format!("{:?}", up).bold(),
+                    format!(
+                        "${:.2}",
+                        up.buyin_amount() * min_buyins(player_profile.risk_level)
+                    )
+                    .bright_green()
                 );
             }
-            _ => {}
+
+            if let Some(down) = move_down {
+                println!(
+                    "🔻 Move down to {} if below: {}",
+                    format!("{:?}", down).bold(),
+                    format!(
+                        "${:.2}",
+                        down.buyin_amount() * min_buyins(player_profile.risk_level)
+                    )
+                    .red()
+                );
+            }
+        }
+
+        GameType::SitAndGo | GameType::Tournament => {
+            let stake = get_tournament_stake(
+                player_profile.bankroll,
+                player_profile.game_type,
+                player_profile.risk_level,
+            );
+
+            match player_profile.game_type {
+                GameType::SitAndGo => {
+                    println!(
+                        "\n🎯 Target SNG Buy-In: {}",
+                        format!("${:.2}", stake).truecolor(255, 215, 0).bold()
+                    );
+                }
+                GameType::Tournament => {
+                    println!(
+                        "\n🎯 Target Avg MTT Buy-In: {}",
+                        format!("${:.2}", stake).truecolor(255, 215, 0).bold()
+                    );
+                }
+                _ => {}
+            }
         }
     }
-}
 
+    println!(
+        "\n{}",
+        "Good luck at the tables! ♠️♥️♣️♦️".bright_white().italic()
+    );
 }

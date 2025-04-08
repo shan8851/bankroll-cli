@@ -10,7 +10,9 @@ pub fn get_tournament_stake(bankroll: f64, game: GameType, risk: RiskLevel) -> f
         (GameType::Tournament, RiskLevel::Moderate) => 100.0,
         (GameType::Tournament, RiskLevel::Aggressive) => 50.0,
         (GameType::Tournament, RiskLevel::UltraAggressive) => 30.0,
-        _ => 100.0, // fallback
+        (GameType::Cash, _) => {
+            panic!("get_tournament_stake() called with GameType::Cash");
+        }
     };
 
     bankroll / min_buyins

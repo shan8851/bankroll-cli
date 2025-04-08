@@ -4,3 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+inquire = "0.6"
+figlet-rs = "0.1.0"
+colored = "2.0"
+terminal_size = "0.2"

@@ -35,78 +35,20 @@ impl CashStake {
     }
 }
 
-pub fn get_cash_stake(bankroll: f64, risk: RiskLevel) -> CashStake {
-    let min_buyins = match risk {
-        RiskLevel::Conservative => 50.0,
-        RiskLevel::Moderate => 40.0,
-        RiskLevel::Aggressive => 30.0,
-        RiskLevel::UltraAggressive => 20.0,
-    };
-
-    let stakes = [
-        CashStake::NL10000,
-        CashStake::NL5000,
-        CashStake::NL2000,
-        CashStake::NL1000,
-        CashStake::NL500,
-        CashStake::NL200,
-        CashStake::NL100,
-        CashStake::NL50,
-        CashStake::NL25,
-        CashStake::NL10,
-        CashStake::NL5,
-        CashStake::NL2,
-    ];
-
-    for stake in stakes {
-        if bankroll >= stake.buyin_amount() * min_buyins {
-            return stake;
-        }
-    }
-
-    CashStake::NL2 // fallback
-}
-
-pub fn get_cash_stake_with_neighbors(
-    bankroll: f64,
-    risk: RiskLevel,
-) -> (CashStake, Option<CashStake>, Option<CashStake>) {
-    let min_buyins = match risk {
-        RiskLevel::Conservative => 50.0,
-        RiskLevel::Moderate => 40.0,
-        RiskLevel::Aggressive => 30.0,
-        RiskLevel::UltraAggressive => 20.0,
-    };
-
-    let stakes = [
-        CashStake::NL10000,
-        CashStake::NL5000,
-        CashStake::NL2000,
-        CashStake::NL1000,
-        CashStake::NL500,
-        CashStake::NL200,
-        CashStake::NL100,
-        CashStake::NL50,
-        CashStake::NL25,
-        CashStake::NL10,
-        CashStake::NL5,
-        CashStake::NL2,
-    ];
-
-    for (i, stake) in stakes.iter().enumerate() {
-        if bankroll >= stake.buyin_amount() * min_buyins {
-            let lower_stake = if i < stakes.len() - 1 {
-                Some(stakes[i + 1])
-            } else {
-                None
-            };
-            let upper_stake = if i > 0 { Some(stakes[i - 1]) } else { None };
-            return (*stake, lower_stake, upper_stake);
-        }
-    }
-
-    (CashStake::NL2, None, None)
-}
+const STAKES: [CashStake; 12] = [
+    CashStake::NL10000,
+    CashStake::NL5000,
+    CashStake::NL2000,
+    CashStake::NL1000,
+    CashStake::NL500,
+    CashStake::NL200,
+    CashStake::NL100,
+    CashStake::NL50,
+    CashStake::NL25,
+    CashStake::NL10,
+    CashStake::NL5,
+    CashStake::NL2,
+];
 
 pub fn min_buyins(risk: RiskLevel) -> f64 {
     match risk {
@@ -115,4 +57,25 @@ pub fn min_buyins(risk: RiskLevel) -> f64 {
         RiskLevel::Aggressive => 30.0,
         RiskLevel::UltraAggressive => 20.0,
     }
+}
+
+pub fn get_cash_stake_with_neighbors(
+    bankroll: f64,
+    risk: RiskLevel,
+) -> (CashStake, Option<CashStake>, Option<CashStake>) {
+    let min_buyins = min_buyins(risk);
+
+    for (i, stake) in STAKES.iter().enumerate() {
+        if bankroll >= stake.buyin_amount() * min_buyins {
+            let lower_stake = if i < STAKES.len() - 1 {
+                Some(STAKES[i + 1])
+            } else {
+                None
+            };
+            let upper_stake = if i > 0 { Some(STAKES[i - 1]) } else { None };
+            return (*stake, lower_stake, upper_stake);
+        }
+    }
+
+    (CashStake::NL2, None, None)
 }
