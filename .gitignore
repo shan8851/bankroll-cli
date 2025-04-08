@@ -1,1 +1,30 @@
+# === Rust Defaults ===
 /target
+**/*.rs.bk
+
+# === Build Artifacts ===
+*.exe
+*.dll
+*.so
+*.dylib
+*.rlib
+
+# === Logs and Dumps ===
+*.log
+*.trace
+*.dmp
+
+# === IDEs and Editors ===
+# VS Code
+.vscode/
+/.vscode/*
+
+# === OS/Tooling Files ===
+.DS_Store
+Thumbs.db
+
+# === Tests and Temp Files ===
+/tests/output/*
+*.tmp
+*.swp
+*.bak

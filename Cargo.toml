@@ -2,6 +2,13 @@
 name = "bankroll-cli"
 version = "0.1.0"
 edition = "2024"
+authors = ["shan8851"]
+description = "A Rust CLI tool to calculate poker bankroll stakes using BRM strategies."
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/shan8851/bankroll-cli"
+keywords = ["cli", "poker", "bankroll", "rust"]
+categories = ["command-line-utilities", "finance"]
 
 [dependencies]
 inquire = "0.6"
